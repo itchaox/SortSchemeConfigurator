@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 17:28
+ * @LastTime   : 2023-12-30 17:38
  * @desc       : 
 -->
 
@@ -137,13 +137,12 @@
       return;
     }
 
-    loading.value = true;
-
     const tableMetaList = await bitable.base.getTableMetaList();
 
     // FIXME 数据表名字验重
     const index = tableMetaList.findIndex((item) => item.name === addTableName.value);
     if (index === -1) {
+      loading.value = true;
       isAddTable.value = false;
 
       const { tableId } = await bitable.base.addTable({
@@ -152,10 +151,14 @@
       });
 
       const table = await bitable.base.getTableById(tableId);
-
+      let _list = [];
       for (let i = 0; i < 10; i++) {
-        await table.addRecord();
+        _list.push({
+          fields: {},
+        });
       }
+
+      await table.addRecords(_list);
 
       const fieldIdList = await table.getFieldIdList();
       const field = await table.getFieldById(fieldIdList[0]);
@@ -165,6 +168,18 @@
         name: activeItem.value?.list[0]?.name,
         type: activeItem.value?.list[0]?.type,
       });
+
+      ElMessage({
+        type: 'success',
+        message: '新增数据表成功',
+        duration: 1500,
+        showClose: true,
+      });
+
+      // 移动到新数据表位置
+      await bitable.ui.switchToTable(tableId);
+
+      loading.value = false;
 
       // 新增字段列
       const list = activeItem.value.list;
@@ -178,18 +193,6 @@
       }
 
       addTableName.value = '';
-
-      ElMessage({
-        type: 'success',
-        message: '新增数据表成功',
-        duration: 1500,
-        showClose: true,
-      });
-
-      // 移动到新数据表位置
-      await bitable.ui.switchToTable(tableId);
-
-      loading.value = false;
     } else {
       ElMessage({
         type: 'error',
