@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 17:16
+ * @LastTime   : 2023-12-30 17:28
  * @desc       : 
 -->
 
@@ -152,6 +152,10 @@
       });
 
       const table = await bitable.base.getTableById(tableId);
+
+      for (let i = 0; i < 10; i++) {
+        await table.addRecord();
+      }
 
       const fieldIdList = await table.getFieldIdList();
       const field = await table.getFieldById(fieldIdList[0]);
