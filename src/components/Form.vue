@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 16:22
+ * @LastTime   : 2023-12-30 16:29
  * @desc       : 
 -->
 
@@ -99,6 +99,16 @@
   }
 
   function batchDelete() {
+    if (selectList.value.length === 0) {
+      ElMessage({
+        type: 'warning',
+        message: '请选择删除的方案!',
+        duration: 1500,
+        showClose: true,
+      });
+      return;
+    }
+
     const difference = methodList.value.filter((method) => !selectList.value.some((select) => select.id === method.id));
 
     methodList.value = difference;
@@ -205,6 +215,13 @@
       let _name = item.name;
       const nameMatch = !methodName.value || _name?.includes(methodName.value);
       return nameMatch;
+    });
+
+    ElMessage({
+      type: 'success',
+      message: '查询成功',
+      duration: 1500,
+      showClose: true,
     });
   }
 
