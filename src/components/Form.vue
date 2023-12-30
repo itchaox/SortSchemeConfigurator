@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 16:00
+ * @LastTime   : 2023-12-30 16:22
  * @desc       : 
 -->
 
@@ -28,6 +28,7 @@
       // 已存在 key
       const retrievedArray = JSON.parse(storedData);
       methodList.value = retrievedArray;
+      filterTableDataList.value = retrievedArray;
     }
   });
 
@@ -190,13 +191,34 @@
   }
 
   const drawerStatus = ref('add');
+
+  const methodName = ref('');
+
+  const filterTableDataList = ref();
+
+  function search() {
+    // 先重新获取全部数据
+    filterTableDataList.value = methodList.value;
+
+    // 筛选插件信息
+    filterTableDataList.value = filterTableDataList.value.filter((item) => {
+      let _name = item.name;
+      const nameMatch = !methodName.value || _name?.includes(methodName.value);
+      return nameMatch;
+    });
+  }
+
+  function reset() {
+    methodName.value = '';
+    filterTableDataList.value = methodList.value;
+  }
 </script>
 
 <template>
   <div class="tip">
     <div class="tip-text tip-title">操作步骤:</div>
     <div class="tip-text">1. 新增方案: 配置方案名字和字段列表信息</div>
-    <div class="tip-text">2. 点击"生成数据表"按钮，输入表名，生成对应方案数据表</div>
+    <div class="tip-text">2. 点击"运行"按钮，输入表名，生成对应方案数据表</div>
     <div class="tip-text">3. 点击"编辑"按钮，修改选定方案名称和字段列表</div>
   </div>
 
@@ -204,13 +226,45 @@
     v-loading="loading"
     element-loading-text="加载中..."
   >
-    <div class="batch-button">
+    <div class="button">
       <el-button
         type="primary"
         @click="addView"
+        size="small"
       >
         <el-icon><Plus /></el-icon>
         <span>新增方案</span>
+      </el-button>
+    </div>
+
+    <div class="addView-line">
+      <div class="addView-line-label">方案名字:</div>
+      <el-input
+        style="width: 60%"
+        v-model="methodName"
+        clearable
+        placeholder="请输入方案名字"
+        @keydown.enter="search"
+      />
+    </div>
+
+    <div class="button">
+      <el-button
+        type="primary"
+        size="small"
+        @click="search"
+      >
+        <el-icon><Search /></el-icon>
+        <span>查询</span>
+      </el-button>
+
+      <el-button
+        type="info"
+        size="small"
+        @click="reset"
+      >
+        <el-icon><Refresh /></el-icon>
+        <span>重置</span>
       </el-button>
     </div>
 
@@ -218,7 +272,7 @@
       <el-table
         ref="tableRef"
         @selection-change="handleSelectionChange"
-        :data="methodList"
+        :data="filterTableDataList"
         height="100%"
         empty-text="暂无数据"
       >
@@ -250,16 +304,21 @@
             <div class="operation">
               <div
                 @click="use(scope.row)"
+                title="新增数据表"
                 style="color: rgb(20, 86, 240)"
               >
                 <el-icon size="20"><VideoPlay /></el-icon>
               </div>
-              <div @click="edit(scope.row)">
+              <div
+                @click="edit(scope.row)"
+                title="编辑方案"
+              >
                 <el-icon size="20"><Edit /></el-icon>
               </div>
 
               <div
                 @click="handleDelete(scope.$index, scope.row.id)"
+                title="删除方案"
                 style="color: #f54a45"
               >
                 <el-icon size="20"><Delete /></el-icon>
@@ -274,6 +333,7 @@
       <el-button
         @click="batchDelete"
         type="danger"
+        size="small"
         color="#F54A45"
       >
         <el-icon><Delete /></el-icon>
@@ -292,11 +352,14 @@
   >
     <div class="addView">
       <div class="addView-line">
-        <div class="addView-line-label addView-line-labelDialog theme-view-text-color">数据表名字:</div>
+        当前方案：<span style="color: rgb(20, 86, 240); font-weight: 500"> {{ activeItem.name }}</span>
+      </div>
+      <div class="addView-line">
+        <div class="addView-line-label addView-line-labelDialog">数据表名:</div>
         <el-input
           v-model="addTableName"
           size="small"
-          placeholder="请输入数据表名字"
+          placeholder="请输入数据表名"
         />
       </div>
 
@@ -350,10 +413,6 @@
       font-size: 14px;
       white-space: nowrap;
     }
-
-    .addView-line-labelDialog {
-      width: 125px;
-    }
   }
 
   .operation {
@@ -380,5 +439,9 @@
       font-size: 14px;
       margin-bottom: 8px;
     }
+  }
+
+  .button {
+    margin: 14px 0;
   }
 </style>
