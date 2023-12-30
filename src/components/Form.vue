@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 16:29
+ * @LastTime   : 2023-12-30 17:16
  * @desc       : 
 -->
 
@@ -112,6 +112,7 @@
     const difference = methodList.value.filter((method) => !selectList.value.some((select) => select.id === method.id));
 
     methodList.value = difference;
+    filterTableDataList.value = difference;
 
     // 更新存储的数据
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(difference));
