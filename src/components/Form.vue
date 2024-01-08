@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 17:38
+ * @LastTime   : 2024-01-09 01:00
  * @desc       : 
 -->
 
@@ -35,6 +35,7 @@
   const methodList = ref([]);
 
   const confirmAddView = (item) => {
+    // debugger;
     if (drawerStatus.value === 'add') {
       methodList.value.push(item);
     } else {
@@ -45,7 +46,10 @@
         }
         return _item;
       });
+      filterTableDataList.value = methodList.value;
     }
+
+    // console.log('methodList.value', methodList.value);
   };
 
   function cancelAddView() {
@@ -81,13 +85,41 @@
     selectList.value = val;
   };
 
-  const isAddTable = ref();
-  const addTableName = ref();
+  let table;
+  let view;
 
-  const activeItem = ref();
+  async function init() {
+    table = await bitable.base.getActiveTable();
+    view = await table.getActiveView();
+  }
+
+  onMounted(() => {
+    init();
+  });
+
+  bitable.base.onSelectionChange(async (event) => {
+    init();
+  });
+
   async function use(item) {
-    isAddTable.value = true;
-    activeItem.value = item;
+    const _sortList = await view.getSortInfo();
+    if (_sortList?.length > 0) {
+      for (const item of _sortList) {
+        await view.deleteSort(item);
+      }
+      await view.applySetting();
+    }
+
+    // 筛选
+    if (item?.list?.length > 0) {
+      await view.addSort(
+        item?.list?.map((item) => ({
+          fieldId: item.id,
+          desc: item.desc,
+        })),
+      );
+      await view.applySetting();
+    }
   }
 
   const addMethodItem = ref();
@@ -126,87 +158,6 @@
   }
 
   const loading = ref(false);
-  async function confirm() {
-    if (!addTableName.value) {
-      ElMessage({
-        type: 'error',
-        message: '请填写数据表名字',
-        duration: 1500,
-        showClose: true,
-      });
-      return;
-    }
-
-    const tableMetaList = await bitable.base.getTableMetaList();
-
-    // FIXME 数据表名字验重
-    const index = tableMetaList.findIndex((item) => item.name === addTableName.value);
-    if (index === -1) {
-      loading.value = true;
-      isAddTable.value = false;
-
-      const { tableId } = await bitable.base.addTable({
-        name: addTableName.value,
-        fields: [],
-      });
-
-      const table = await bitable.base.getTableById(tableId);
-      let _list = [];
-      for (let i = 0; i < 10; i++) {
-        _list.push({
-          fields: {},
-        });
-      }
-
-      await table.addRecords(_list);
-
-      const fieldIdList = await table.getFieldIdList();
-      const field = await table.getFieldById(fieldIdList[0]);
-
-      // 修改首列
-      await table.setField(field.id, {
-        name: activeItem.value?.list[0]?.name,
-        type: activeItem.value?.list[0]?.type,
-      });
-
-      ElMessage({
-        type: 'success',
-        message: '新增数据表成功',
-        duration: 1500,
-        showClose: true,
-      });
-
-      // 移动到新数据表位置
-      await bitable.ui.switchToTable(tableId);
-
-      loading.value = false;
-
-      // 新增字段列
-      const list = activeItem.value.list;
-
-      for (const [index, item] of list.entries()) {
-        if (index === 0) {
-          continue; // 跳过索引 0
-        }
-
-        await table.addField({ type: item.type, name: item.name });
-      }
-
-      addTableName.value = '';
-    } else {
-      ElMessage({
-        type: 'error',
-        message: '数据表名字已存在,请重新输入!',
-        duration: 1500,
-        showClose: true,
-      });
-    }
-  }
-
-  function cancel() {
-    isAddTable.value = false;
-    addTableName.value = '';
-  }
 
   const drawerStatus = ref('add');
 
@@ -242,9 +193,9 @@
 <template>
   <div class="tip">
     <div class="tip-text tip-title">操作步骤:</div>
-    <div class="tip-text">1. 新增方案: 配置方案名字和字段列表信息</div>
-    <div class="tip-text">2. 点击"运行"按钮，输入表名，生成对应方案数据表</div>
-    <div class="tip-text">3. 点击"编辑"按钮，修改选定方案名称和字段列表</div>
+    <div class="tip-text">1. 新增方案: 配置方案名字和排序条件</div>
+    <div class="tip-text">2. 点击"运行"按钮，使用当前方案的排序条件</div>
+    <div class="tip-text">3. 点击"编辑"按钮，修改选定方案名字和排序条件</div>
   </div>
 
   <div
@@ -328,13 +279,15 @@
           <template #default="scope">
             <div class="operation">
               <div
+                class="cursor-pointer"
                 @click="use(scope.row)"
-                title="新增数据表"
+                title="运用排序条件"
                 style="color: rgb(20, 86, 240)"
               >
                 <el-icon size="20"><VideoPlay /></el-icon>
               </div>
               <div
+                class="cursor-pointer"
                 @click="edit(scope.row)"
                 title="编辑方案"
               >
@@ -342,6 +295,7 @@
               </div>
 
               <div
+                class="cursor-pointer"
                 @click="handleDelete(scope.$index, scope.row.id)"
                 title="删除方案"
                 style="color: #f54a45"
@@ -366,45 +320,6 @@
       </el-button>
     </div>
   </div>
-
-  <el-dialog
-    v-model="isAddTable"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    @close="cancel"
-    title="新增数据表"
-    width="75%"
-  >
-    <div class="addView">
-      <div class="addView-line">
-        当前方案：<span style="color: rgb(20, 86, 240); font-weight: 500"> {{ activeItem.name }}</span>
-      </div>
-      <div class="addView-line">
-        <div class="addView-line-label addView-line-labelDialog">数据表名:</div>
-        <el-input
-          v-model="addTableName"
-          size="small"
-          placeholder="请输入数据表名"
-        />
-      </div>
-
-      <div>
-        <el-button
-          type="primary"
-          size="small"
-          @click="confirm"
-          >确认</el-button
-        >
-
-        <el-button
-          type="info"
-          size="small"
-          @click="cancel"
-          >取消</el-button
-        >
-      </div>
-    </div>
-  </el-dialog>
 
   <Drawer
     v-model:model-value="addViewDrawer"
@@ -468,5 +383,9 @@
 
   .button {
     margin: 14px 0;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
   }
 </style>

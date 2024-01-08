@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-16 09:57
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-30 15:30
+ * @LastTime   : 2024-01-09 00:51
  * @desc       : 抽屉
 -->
 
@@ -13,6 +13,10 @@
   import FieldIcon from './fieldIcon.jsx';
   import { v4 as uuidv4 } from 'uuid';
   import { LOCAL_STORAGE_KEY } from '@/config/constant';
+
+  import { Drag } from '@icon-park/vue-next';
+
+  import { VueDraggable } from 'vue-draggable-plus';
 
   const base = bitable.base;
 
@@ -33,161 +37,17 @@
   // 字段列表
   const fieldList = ref([]);
 
-  // 筛选的字段列表
-  // FIXME 支持大部分常见字段
-  const filterFieldList = ref([
-    {
-      name: '文本',
-      type: 1,
-    },
-    {
-      name: '数字',
-      type: 2,
-    },
-    {
-      name: '单选',
-      type: 3,
-    },
-    {
-      name: '多选',
-      type: 4,
-    },
-    {
-      name: '日期时间',
-      type: 5,
-    },
-    {
-      name: '复选框',
-      type: 7,
-    },
-    {
-      name: '用户',
-      type: 11,
-    },
-    {
-      name: '电话',
-      type: 13,
-    },
-    {
-      name: '网址',
-      type: 15,
-    },
-    {
-      name: '附件',
-      type: 17,
-    },
-    // {
-    //   name: '单链接',
-    //   type: 18,
-    // },
-    // {
-    //   name: '查找',
-    //   type: 19,
-    // },
-    {
-      name: '公式',
-      type: 20,
-    },
-    // {
-    //   name: '双向链接',
-    //   type: 21,
-    // },
-    {
-      name: '位置',
-      type: 22,
-    },
-    {
-      name: '群聊',
-      type: 23,
-    },
-    {
-      name: '创建时间',
-      type: 1001,
-    },
-    {
-      name: '修改时间',
-      type: 1002,
-    },
-    {
-      name: '创建用户',
-      type: 1003,
-    },
-    {
-      name: '修改用户',
-      type: 1004,
-    },
-    {
-      name: '自动编号',
-      type: 1005,
-    },
-    {
-      name: '条形码',
-      type: 99001,
-    },
-    {
-      name: '进度',
-      type: 99002,
-    },
-    {
-      name: '货币',
-      type: 99003,
-    },
-    {
-      name: '评分',
-      type: 99004,
-    },
-    {
-      name: '电子邮件',
-      type: 99005,
-    },
-  ]);
-
-  onMounted(async () => {
-    init();
-  });
-
-  base.onSelectionChange(async (event) => {
-    init();
-  });
-
-  // 文本类字段的集合
-  // 1 文本; 13 电话号码; 15 超链接; 22 地理位置; 99001 条形码; 99005 Email
-  const textMap = ref([1, 13, 15, 22, 99001]);
-
-  // 数字类字段的集合
-  // 2 数字; 1005 自动编号; 99002 进度; 99003 货币; 99004 评分
-  const numberMap = ref([2, 1005, 99002, 99003, 99004]);
-
-  // 选择类字段的集合
-  // 3 单选; 4多选;
-  const selectMap = ref([3, 4]);
-
-  // 引用类型
-  // 11 人员; 18 单向关联; 23 群组;
-
-  // 日期类型
-  // 5 日期; 1001 创建时间; 1002 修改时间
-
-  async function init() {
-    table = await base.getActiveTable();
-    view = await table.getActiveView();
-    // fieldList.value = await view.getFieldMetaList();
-
-    // filterFieldList.value = fieldList.value;
-
-    // filterFieldList.value = fieldList.value.filter((item) =>
-    //   [1, 3, 4, 13, 15, 22, 99001, 2, 1005, 99002, 99003, 99004].includes(item.type),
-    // );
-  }
-
   const addMethodName = ref();
 
-  const addViewType = ref(1);
+  // FIXME 排序
+  const sortList = ref([]);
 
   /**
    * @desc  : 确认新增/修改方案
    */
   async function confirmAddView() {
+    console.log('sortList.value', sortList.value);
+
     if (!addMethodName.value) {
       ElMessage({
         type: 'error',
@@ -210,7 +70,7 @@
         // 处理 id
         id: props.drawerStatus === 'add' ? uuidv4() : props.addMethodItem?.id,
         name: addMethodName.value,
-        list: filterList.value,
+        list: sortList.value,
       };
 
       // 检索存储的数据
@@ -269,17 +129,19 @@
     emits('cancelAddView');
 
     addMethodName.value = '';
-    filterList.value = [];
+    sortList.value = [];
   }
-
-  // FIXME 筛选
-  const filterList = ref([]);
 
   watch(
     () => props.addMethodItem,
     (newValue, oldValue) => {
-      addMethodName.value = newValue?.name;
-      filterList.value = newValue?.list || [];
+      // debugger;
+      if (newValue) {
+        console.log('🚀  newValue:', newValue);
+
+        addMethodName.value = newValue?.name;
+        sortList.value = newValue?.list || [];
+      }
     },
     {
       immediate: true,
@@ -287,15 +149,101 @@
     },
   );
 
-  const addFilter = () => {
-    filterList.value.push({
-      type: filterFieldList.value?.[0]?.type,
-      name: '',
-    });
-  };
-
   // 折叠面板
   const collapse = ref('1');
+
+  const addSort = () => {
+    const idsInGroup = sortList.value.map((item) => item.id);
+    const _list = sortFieldList.value.filter((item) => !idsInGroup.includes(item.id));
+
+    if (_list?.[0]) {
+      sortList.value.push({
+        id: _list?.[0]?.id,
+        name: _list?.[0]?.name,
+        type: _list?.[0]?.type,
+        desc: false,
+      });
+    }
+  };
+
+  const sortFiledChange = async (item, index) => {
+    let _activeItem = sortFieldList.value.find((i) => i.id === item.id);
+
+    sortList.value[index] = {
+      name: _activeItem.name,
+      type: _activeItem.type,
+      id: _activeItem.id,
+      desc: false,
+    };
+  };
+
+  // 排序的字段列表
+  const sortFieldList = ref([]);
+
+  async function init() {
+    table = await base.getActiveTable();
+    view = await table.getActiveView();
+    fieldList.value = await view.getFieldMetaList();
+
+    sortFieldList.value = fieldList.value;
+  }
+
+  onMounted(async () => {
+    init();
+  });
+
+  base.onSelectionChange(async (event) => {
+    init();
+  });
+
+  /**
+   * @desc  : 顺序
+   * @param  {any} type：字段类型
+   * @return {any} 文本
+   */
+  const getGroupTextOrder = (type) => {
+    let textList = [1, 11, 13, 15, 17, 18, 19, 20, 21, 22, 23, 403, 1003, 1004, 99001];
+    let numberList = [2, 5, 1001, 1002, 1005, 99002, 99003, 99004];
+    let optionList = [3, 4, 7];
+
+    let _text;
+    if (textList.includes(type)) {
+      _text = 'A → Z';
+    } else if (numberList.includes(type)) {
+      _text = '0 → 9';
+    } else if (optionList.includes(type)) {
+      _text = '选项顺序';
+    } else {
+      _text = 'A → Z';
+    }
+
+    return _text;
+  };
+
+  /**
+   * @desc  : 倒序
+   * @param  {any} type：字段类型
+   * @return {any} 文本
+   */
+  const getGroupTextReverseOrder = (type) => {
+    let textList = [1, 11, 13, 15, 17, 18, 19, 20, 21, 22, 23, 403, 1003, 1004, 99001];
+    let numberList = [2, 5, 1001, 1002, 1005, 99002, 99003, 99004];
+    let optionList = [3, 4, 7];
+
+    let _text;
+    if (textList.includes(type)) {
+      _text = 'Z → A';
+    } else if (numberList.includes(type)) {
+      _text = '9 → 0';
+    } else if (optionList.includes(type)) {
+      _text = '选项倒序';
+    } else {
+      _text = 'Z → A';
+    }
+    return _text;
+  };
+
+  const el2 = ref();
 </script>
 
 <template>
@@ -346,72 +294,102 @@
           v-model="collapse"
           class="collapse"
         >
-          <!-- FIXME 筛选 -->
+          <!-- FIXME 排序 -->
           <el-collapse-item name="1">
             <template #title>
-              <el-icon><Filter /></el-icon>
-              <span class="collapse-title">配置字段信息</span>
+              <AlphabeticalSorting theme="outline" />
+              <span class="collapse-title">设置排序条件</span>
               <span
-                v-if="filterList?.length > 0"
-                style="color: #5c82f3"
-                >（{{ filterList?.length }}）</span
+                v-if="sortList.length > 0"
+                style="color: #4493c5"
+                >（{{ sortList.length }}）</span
               >
             </template>
+            <VueDraggable
+              ref="el2"
+              v-model="sortList"
+              animation="150"
+              handle=".handle2"
+              class="collapse-line-list"
+            >
+              <!-- <div class="collapse-line-list"> -->
 
-            <div class="collapse-line-list">
               <div
                 class="collapse-line"
-                v-for="(item, index) in filterList"
-                :key="item.index"
+                v-for="(item, index) in sortList"
+                :key="item.id"
               >
-                <!-- 字段名 -->
-                <div class="collapse-line-filed">
-                  <el-select
-                    size="small"
-                    v-model="item.type"
-                  >
-                    <el-option
-                      v-for="(field, index) in filterFieldList"
-                      :key="index"
-                      :label="field.name"
-                      :title="field.name"
-                      :value="field.type"
+                <div class="drag2">
+                  <Drag
+                    class="handle2 cursor-move"
+                    theme="outline"
+                    size="18"
+                    fill="#333"
+                    strokeLinejoin="miter"
+                    strokeLinecap="butt"
+                  />
+                  <!-- 字段名 -->
+                  <div class="collapse-line-filed">
+                    <el-select
+                      size="small"
+                      v-model="item.id"
+                      :title="item.name"
+                      @change="sortFiledChange(item, index)"
                     >
-                      <field-icon :fieldType="field.type" />
-                      <span>
-                        {{ field.name }}
-                      </span>
-                    </el-option>
-                  </el-select>
+                      <el-option
+                        v-for="field in sortFieldList"
+                        :key="field.id"
+                        :label="field.name"
+                        :title="field.name"
+                        :value="field.id"
+                        :disabled="sortList.map((j) => j.id).includes(field.id)"
+                      >
+                        <field-icon :fieldType="field.type" />
+                        <span>
+                          {{ field.name }}
+                        </span>
+                      </el-option>
+                    </el-select>
+                  </div>
                 </div>
+
                 <div class="collapse-line-other">
                   <!-- 值 -->
-                  <div
-                    class="collapse-line-value"
-                    style="width: 100%"
-                  >
-                    <!-- TODO 输入框数据验重 -->
-                    <el-input
-                      v-model="item.name"
-                      :title="item.name"
-                      size="small"
-                      placeholder="请输入字段名字"
-                    />
+                  <div class="collapse-line-value">
+                    <el-button-group size="small">
+                      <el-button
+                        class="collapse-btn"
+                        type="primary"
+                        :plain="item.desc"
+                        @click="() => (item.desc = !item.desc)"
+                        >{{ getGroupTextOrder(item.type) }}</el-button
+                      >
+                      <el-button
+                        class="collapse-btn"
+                        type="primary"
+                        :plain="!item.desc"
+                        @click="() => (item.desc = !item.desc)"
+                      >
+                        {{ getGroupTextReverseOrder(item.type) }}
+                      </el-button>
+                    </el-button-group>
                   </div>
                   <el-button
                     :icon="Close"
                     class="collapse-delete"
-                    @click="() => filterList.splice(index, 1)"
+                    @click="() => sortList.splice(index, 1)"
                     text
                   />
                 </div>
               </div>
-            </div>
+              <!-- </div> -->
+            </VueDraggable>
             <el-button
+              v-if="sortFieldList.length > sortList.length"
               text
-              @click="addFilter"
+              @click="addSort"
             >
-              <el-icon><Plus /></el-icon>添加字段
+              <el-icon><Plus /></el-icon>添加条件
             </el-button>
           </el-collapse-item>
         </el-collapse>
@@ -456,12 +434,12 @@
 
   .collapse {
     margin: 20px 0;
-    max-height: 60vh;
-    overflow: scroll;
   }
 
   .collapse-title {
     margin-left: 5px;
+    position: relative;
+    bottom: 1px;
   }
 
   .collapse-line-list {
@@ -507,5 +485,25 @@
   .view-name-icon {
     position: relative;
     top: 2px;
+  }
+
+  .drag2 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .handle2 {
+      position: relative;
+      padding-top: 5px;
+      margin-right: 10px;
+    }
+  }
+
+  .collapse-btn {
+    width: 65px;
+  }
+
+  .cursor-move {
+    cursor: grab;
   }
 </style>
